@@ -20,6 +20,7 @@ The flow:
 4. **Re-ranking** — A cross-encoder re-scores the candidates for precision, keeping the most relevant passages and pushing off-topic ones down.
 5. **Generation** — The top passages are passed to Claude with a grounding prompt that instructs it to answer only from the provided sources, in natural F1 terminology, and to admit when the answer isn't there.
 6. **Serving** — The pipeline is exposed as a FastAPI web API and accessed through a Streamlit chat interface.
+7. **Containerization** — The API and UI run as separate Docker containers orchestrated with Docker Compose. The API is an internal-only service; only the Streamlit UI is exposed publicly, and it reaches the API over the internal container network.
 
 ---
 
@@ -35,6 +36,7 @@ The flow:
 | Generation | Claude (Anthropic API) |
 | API | FastAPI + Uvicorn |
 | UI | Streamlit |
+| Containerization | Docker + Docker Compose |
 
 Embeddings and retrieval run locally; only answer generation calls an external API.
 
@@ -54,6 +56,9 @@ the-stewards-room/
 ├── frontend/
 │   └── app.py             # Streamlit chat UI
 ├── data/                  # source regulations PDF
+├── Dockerfile             # API image (builds vector store at build time)
+├── Dockerfile.streamlit   # Streamlit UI image
+├── docker-compose.yml     # orchestrates API + UI
 ├── requirements.txt
 └── README.md
 ```
@@ -101,23 +106,39 @@ python3 -m app.core.ingest
 
 ## Running the app
 
-The Stewards' Room runs as two services — the API backend and the Streamlit frontend. Start them in separate terminals (with the virtual environment activated in each).
+### With Docker Compose (recommended)
 
-**Terminal 1 — start the API:**
+The simplest way to run the whole system. With Docker installed and your `ANTHROPIC_API_KEY` set in a `.env` file in the project root:
 
 ```bash
+docker compose up --build
+```
+
+This builds and starts both services — the API builds its vector store during the image build, and a healthcheck holds the UI back until the API is ready. Once running, open the Streamlit UI at `http://localhost:8501`.
+
+Only the Streamlit UI is exposed; the API runs as an internal service that the UI reaches over the container network.
+
+### Running locally without Docker
+
+You can also run the two services directly. First build the vector store once:
+
+```bash
+python3 -m app.core.ingest
+```
+
+Then start the services in separate terminals (virtual environment activated in each):
+
+```bash
+# Terminal 1 — the API
 uvicorn app.api.main:app --reload
 ```
 
-**Terminal 2 — start the UI:**
-
 ```bash
+# Terminal 2 — the UI
 streamlit run frontend/app.py
 ```
 
-Then open the Streamlit URL shown in your terminal (usually `http://localhost:8501`) and start asking questions.
-
-You can also test the API directly at `http://localhost:8000/docs`, FastAPI's auto-generated interactive documentation.
+Open the Streamlit URL shown in your terminal (usually `http://localhost:8501`). You can also test the API directly at `http://localhost:8000/docs`, FastAPI's auto-generated interactive documentation.
 
 ---
 
@@ -143,7 +164,6 @@ The Stewards' Room is honest about what it can and can't do:
 
 - Expand coverage to all regulation sections and ongoing 2026 updates
 - A React frontend for a richer, production-grade interface
-- Containerized deployment (Docker) and hosting on AWS
 - An agentic multi-agent layer (LangGraph) with asynchronous orchestration for complex, multi-step queries
 - Evaluation tracking to measure answer quality with metrics
 

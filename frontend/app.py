@@ -1,7 +1,8 @@
+import os
 import streamlit as st
 import requests
 
-API_URL = "http://localhost:8000/ask"
+API_URL = os.getenv("API_URL", "http://localhost:8000/ask")
 
 st.title("The Stewards Room")
 st.caption("An AI assistant for Formula 1 regulations.")
