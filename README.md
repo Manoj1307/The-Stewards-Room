@@ -142,6 +142,14 @@ Open the Streamlit URL shown in your terminal (usually `http://localhost:8501`).
 
 ---
 
+## Deployment
+
+The application is deployed on **AWS EC2** as a containerized stack, run with Docker Compose. The two services are built on the instance and orchestrated together, with the API's healthcheck gating the UI's startup so the frontend never comes up before the backend is ready.
+
+In line with the architecture, only the Streamlit UI is exposed to the internet (a single public port); the API runs as an internal service that the UI reaches over the private container network. This keeps a single public entry point and keeps the backend off the public internet.
+
+---
+
 ## Example
 
 > **Q:** How many tyre compounds must a driver use during a race?
